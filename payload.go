@@ -3,35 +3,57 @@ package hooks
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"reflect"
 	"strconv"
 )
 
+///TODO: commenting and docs when ready.
+
 func ReadPayload(data interface{}) Payload {
-	return Payload{data}
+	return payload{data}
 }
 
-type Payload struct {
+// Payload is an interface in order to be able to change its methods and use a custom Payload when needed.
+type Payload interface {
+	IsNil() bool
+	Kind() reflect.Kind
+	IsKindOf(kind reflect.Kind) bool
+	Interface() interface{}
+	String() string
+	SliceString() []string
+	Len() int
+	Boolean() (bool, error)
+	Int() (int, error)
+	Int64() (int64, error)
+	Float32() (float32, error)
+	Float64() (float64, error)
+	Err() error
+	Listener() net.Listener
+	Handler() http.Handler
+}
+
+type payload struct {
 	payload interface{}
 }
 
-func (p Payload) IsNil() bool {
+func (p payload) IsNil() bool {
 	return p.payload == nil
 }
 
-func (p Payload) Kind() reflect.Kind {
+func (p payload) Kind() reflect.Kind {
 	return reflect.TypeOf(p.payload).Kind()
 }
 
-func (p Payload) IsKindOf(kind reflect.Kind) bool {
+func (p payload) IsKindOf(kind reflect.Kind) bool {
 	return p.Kind() == kind
 }
 
-func (p Payload) Interface() interface{} {
+func (p payload) Interface() interface{} {
 	return p.payload
 }
 
-func (p Payload) String() string {
+func (p payload) String() string {
 	if p.IsNil() {
 		return ""
 	}
@@ -43,7 +65,7 @@ func (p Payload) String() string {
 	return ""
 }
 
-func (p Payload) SliceString() []string {
+func (p payload) SliceString() []string {
 	if p.IsNil() {
 		return nil
 	}
@@ -55,7 +77,7 @@ func (p Payload) SliceString() []string {
 	return nil
 }
 
-func (p Payload) Len() int {
+func (p payload) Len() int {
 	if typ := reflect.TypeOf(p.payload); typ.Kind() == reflect.Slice {
 		return typ.Len()
 	}
@@ -63,7 +85,7 @@ func (p Payload) Len() int {
 	return 0
 }
 
-func (p Payload) Boolean() (bool, error) {
+func (p payload) Boolean() (bool, error) {
 	v := p.payload
 	// here we could check for "true", "false" and 0 for false and 1 for true
 	// but this may cause unexpected behavior from the developer if they expecting an error
@@ -79,7 +101,7 @@ func (p Payload) Boolean() (bool, error) {
 	return false, fmt.Errorf("unable to parse boolean of %#v", v)
 }
 
-func (p Payload) Int() (int, error) {
+func (p payload) Int() (int, error) {
 	v := p.payload
 
 	if vint, ok := v.(int); ok {
@@ -93,7 +115,7 @@ func (p Payload) Int() (int, error) {
 	return -1, fmt.Errorf("unable to parse number of %#v", v)
 }
 
-func (p Payload) Int64() (int64, error) {
+func (p payload) Int64() (int64, error) {
 	v := p.payload
 
 	if vint64, ok := v.(int64); ok {
@@ -111,7 +133,7 @@ func (p Payload) Int64() (int64, error) {
 	return -1, fmt.Errorf("unable to parse number of %#v", v)
 }
 
-func (p Payload) Float32() (float32, error) {
+func (p payload) Float32() (float32, error) {
 	v := p.payload
 
 	if vfloat32, ok := v.(float32); ok {
@@ -137,7 +159,7 @@ func (p Payload) Float32() (float32, error) {
 	return -1, fmt.Errorf("unable to parse number of %#v", v)
 }
 
-func (p Payload) Float64() (float64, error) {
+func (p payload) Float64() (float64, error) {
 	v := p.payload
 
 	if vfloat32, ok := v.(float32); ok {
@@ -159,7 +181,7 @@ func (p Payload) Float64() (float64, error) {
 	return -1, fmt.Errorf("unable to parse number of %#v", v)
 }
 
-func (p Payload) Err() error {
+func (p payload) Err() error {
 	if err, ok := p.payload.(error); ok {
 		return err
 	}
@@ -167,7 +189,7 @@ func (p Payload) Err() error {
 	return nil
 }
 
-func (p Payload) Listener() net.Listener {
+func (p payload) Listener() net.Listener {
 	if ln, ok := p.payload.(net.Listener); ok {
 		return ln
 	}
@@ -175,39 +197,61 @@ func (p Payload) Listener() net.Listener {
 	return nil
 }
 
-type Payloads []Payload
+func (p payload) Handler() http.Handler {
+	if h, ok := p.payload.(http.Handler); ok {
+		return h
+	}
 
-func (p Payloads) Index(idx int) Payload {
+	return nil
+}
+
+type Payloads interface {
+	Index(idx int) Payload
+	First() Payload
+	Second() Payload
+	Last() Payload
+	Range(start int, end int) Payloads
+	Iterate(visitor func(int, Payload))
+	Len() int
+}
+
+type payloads []Payload
+
+func (p payloads) Index(idx int) Payload {
 	if idx+1 > len(p) {
-		return Payload{}
+		return payload{}
 	}
 
 	return p[idx]
 }
 
+func (p payloads) First() Payload {
+	return p.Index(0)
+}
+
+func (p payloads) Second() Payload {
+	return p.Index(1)
+}
+
+func (p payloads) Last() Payload {
+	return p.Index(len(p) - 1)
+}
+
 // including start, excluding end
-func (p Payloads) Range(start int, end int) Payloads {
+func (p payloads) Range(start int, end int) Payloads {
 	if end >= len(p) {
-		return Payloads{}
+		return payloads{}
 
 	}
 	return p[start:end]
 }
 
-func (p Payloads) First() Payload {
-	return p.Index(0)
-}
-
-func (p Payloads) Second() Payload {
-	return p.Index(1)
-}
-
-func (p Payloads) Last() Payload {
-	return p.Index(len(p) - 1)
-}
-
-func (p Payloads) Iterate(visitor func(int, Payload)) {
+func (p payloads) Iterate(visitor func(int, Payload)) {
 	for i := range p {
 		visitor(i, p.Index(i))
 	}
+}
+
+func (p payloads) Len() int {
+	return len(p)
 }

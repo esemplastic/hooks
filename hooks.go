@@ -17,16 +17,38 @@ type (
 	ActionsMap map[State]Actions
 )
 
+type Registrar interface {
+	RegisterHook(State, Hook)
+	RegisterHooks(HooksMap)
+}
+
+type Notifier interface {
+	Notify(State, ...interface{})
+	NotifyWithAction(state State, action Action)
+	NotifyWithActionMany(actionsMap ActionsMap)
+}
+
 type Hub struct {
 	mu     sync.RWMutex
 	states []State
 	hooks  HooksMap
 }
 
+var _ Registrar = &Hub{}
+var _ Notifier = &Hub{}
+
 func NewHub() *Hub {
 	return &Hub{
 		hooks: make(HooksMap, 0),
 	}
+}
+
+func (h *Hub) Registrar() Registrar {
+	return h
+}
+
+func (h *Hub) Notifier() Notifier {
+	return h
 }
 
 func (h *Hub) addState(state State) {
@@ -52,7 +74,7 @@ func (h *Hub) RegisterHook(state State, hook Hook) {
 	h.hooks[state] = append(h.hooks[state], hook)
 }
 
-func (h *Hub) RegisterHooks(hooks map[State][]Hook) {
+func (h *Hub) RegisterHooks(hooks HooksMap) {
 	for k, v := range hooks {
 		for i := range v {
 			h.RegisterHook(k, v[i])
@@ -60,13 +82,13 @@ func (h *Hub) RegisterHooks(hooks map[State][]Hook) {
 	}
 }
 
-func (h *Hub) Notify(state State, payload ...interface{}) {
+func (h *Hub) Notify(state State, genericPayloads ...interface{}) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	var payloads Payloads
+	var allPayloads payloads
 
-	for _, p := range payload {
-		payloads = append(payloads, ReadPayload(p))
+	for _, p := range genericPayloads {
+		allPayloads = append(allPayloads, ReadPayload(p))
 	}
 
 	for k, v := range h.hooks {
@@ -74,7 +96,7 @@ func (h *Hub) Notify(state State, payload ...interface{}) {
 			continue
 		}
 		for i := range v {
-			v[i](payloads)
+			v[i](allPayloads)
 		}
 	}
 }

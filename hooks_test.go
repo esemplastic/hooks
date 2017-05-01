@@ -47,7 +47,7 @@ func TestNotify(t *testing.T) {
 	})
 
 	hub.RegisterHook(state3, func(p Payloads) {
-		if expected, got := len(expectedPayloads), len(p); expected != got {
+		if expected, got := len(expectedPayloads), p.Len(); expected != got {
 			t.Fatalf("expected payloads are different by the received, expected: %d but got: %d", expected, got)
 		}
 
