@@ -9,7 +9,7 @@ type State uint8
 type Payload interface{}
 
 type (
-	Hook     func(payload Payload)
+	Hook     func(payload PayloadWrapper)
 	HooksMap map[State][]Hook
 )
 
@@ -62,26 +62,28 @@ func (h *Hub) RegisterHooks(hooks map[State][]Hook) {
 	}
 }
 
-func (h *Hub) Notify(state State, action Action) {
+func (h *Hub) Notify(state State, payload ...Payload) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for k, v := range h.hooks {
 		if k != state {
 			continue
 		}
-
-		err := action()
-
 		for i := range v {
-			v[i](err)
+			v[i](PayloadWrapper{payloads: payload})
 		}
 	}
 }
 
-func (h *Hub) NotifyMany(actionsMap ActionsMap) {
+func (h *Hub) NotifyWithAction(state State, action Action) {
+	payload := action()
+	h.Notify(state, payload)
+}
+
+func (h *Hub) NotifyWithActionMany(actionsMap ActionsMap) {
 	for k, v := range actionsMap {
 		for i := range v {
-			h.Notify(k, v[i])
+			h.NotifyWithAction(k, v[i])
 		}
 	}
 }
