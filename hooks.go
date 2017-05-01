@@ -6,10 +6,8 @@ import (
 
 type State uint8
 
-type Payload interface{}
-
 type (
-	Hook     func(payload PayloadWrapper)
+	Hook     func(payloads Payloads)
 	HooksMap map[State][]Hook
 )
 
@@ -62,15 +60,21 @@ func (h *Hub) RegisterHooks(hooks map[State][]Hook) {
 	}
 }
 
-func (h *Hub) Notify(state State, payload ...Payload) {
+func (h *Hub) Notify(state State, payload ...interface{}) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+	var payloads Payloads
+
+	for _, p := range payload {
+		payloads = append(payloads, ReadPayload(p))
+	}
+
 	for k, v := range h.hooks {
 		if k != state {
 			continue
 		}
 		for i := range v {
-			v[i](PayloadWrapper{payloads: payload})
+			v[i](payloads)
 		}
 	}
 }

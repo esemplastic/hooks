@@ -7,53 +7,64 @@ import (
 	"strconv"
 )
 
-type SinglePayloadWrapper struct {
-	Payload
-	typ reflect.Type
+func ReadPayload(data interface{}) Payload {
+	return Payload{data}
 }
 
-func (p SinglePayloadWrapper) IsNil() bool {
-	return p.Payload == nil
+type Payload struct {
+	payload interface{}
 }
 
-func (p SinglePayloadWrapper) Kind() reflect.Kind {
-	return reflect.TypeOf(p.Payload).Kind()
+func (p Payload) IsNil() bool {
+	return p.payload == nil
 }
 
-func (p SinglePayloadWrapper) IsKindOf(kind reflect.Kind) bool {
+func (p Payload) Kind() reflect.Kind {
+	return reflect.TypeOf(p.payload).Kind()
+}
+
+func (p Payload) IsKindOf(kind reflect.Kind) bool {
 	return p.Kind() == kind
 }
 
-func (p SinglePayloadWrapper) Interface() interface{} {
-	return p.Payload
+func (p Payload) Interface() interface{} {
+	return p.payload
 }
 
-func (p SinglePayloadWrapper) String() string {
+func (p Payload) String() string {
 	if p.IsNil() {
 		return ""
 	}
 
-	if str, ok := p.Payload.(string); ok {
+	if str, ok := p.payload.(string); ok {
 		return str
 	}
 
 	return ""
 }
 
-func (p SinglePayloadWrapper) SliceString() []string {
+func (p Payload) SliceString() []string {
 	if p.IsNil() {
 		return nil
 	}
 
-	if arr, ok := p.Payload.([]string); ok {
+	if arr, ok := p.payload.([]string); ok {
 		return arr
 	}
 
 	return nil
 }
 
-func (p SinglePayloadWrapper) Boolean() (bool, error) {
-	v := p.Payload
+func (p Payload) Len() int {
+	if typ := reflect.TypeOf(p.payload); typ.Kind() == reflect.Slice {
+		return typ.Len()
+	}
+
+	return 0
+}
+
+func (p Payload) Boolean() (bool, error) {
+	v := p.payload
 	// here we could check for "true", "false" and 0 for false and 1 for true
 	// but this may cause unexpected behavior from the developer if they expecting an error
 	// so we just check if bool, if yes then return that bool, otherwise return false and an error
@@ -68,8 +79,8 @@ func (p SinglePayloadWrapper) Boolean() (bool, error) {
 	return false, fmt.Errorf("unable to parse boolean of %#v", v)
 }
 
-func (p SinglePayloadWrapper) Int() (int, error) {
-	v := p.Payload
+func (p Payload) Int() (int, error) {
+	v := p.payload
 
 	if vint, ok := v.(int); ok {
 		return vint, nil
@@ -82,8 +93,8 @@ func (p SinglePayloadWrapper) Int() (int, error) {
 	return -1, fmt.Errorf("unable to parse number of %#v", v)
 }
 
-func (p SinglePayloadWrapper) Int64() (int64, error) {
-	v := p.Payload
+func (p Payload) Int64() (int64, error) {
+	v := p.payload
 
 	if vint64, ok := v.(int64); ok {
 		return vint64, nil
@@ -100,8 +111,8 @@ func (p SinglePayloadWrapper) Int64() (int64, error) {
 	return -1, fmt.Errorf("unable to parse number of %#v", v)
 }
 
-func (p SinglePayloadWrapper) Float32() (float32, error) {
-	v := p.Payload
+func (p Payload) Float32() (float32, error) {
+	v := p.payload
 
 	if vfloat32, ok := v.(float32); ok {
 		return vfloat32, nil
@@ -126,8 +137,8 @@ func (p SinglePayloadWrapper) Float32() (float32, error) {
 	return -1, fmt.Errorf("unable to parse number of %#v", v)
 }
 
-func (p SinglePayloadWrapper) Float64() (float64, error) {
-	v := p.Payload
+func (p Payload) Float64() (float64, error) {
+	v := p.payload
 
 	if vfloat32, ok := v.(float32); ok {
 		return float64(vfloat32), nil
@@ -148,57 +159,55 @@ func (p SinglePayloadWrapper) Float64() (float64, error) {
 	return -1, fmt.Errorf("unable to parse number of %#v", v)
 }
 
-func (p SinglePayloadWrapper) Err() error {
-	if err, ok := p.Payload.(error); ok {
+func (p Payload) Err() error {
+	if err, ok := p.payload.(error); ok {
 		return err
 	}
 
 	return nil
 }
 
-func (p SinglePayloadWrapper) Listener() net.Listener {
-	if ln, ok := p.Payload.(net.Listener); ok {
+func (p Payload) Listener() net.Listener {
+	if ln, ok := p.payload.(net.Listener); ok {
 		return ln
 	}
 
 	return nil
 }
 
-type PayloadWrapper struct {
-	payloads []Payload // remember to convert that to simple SInglePayloadWrapper in order to reduce the compiler of creating new object structs on each call.
-}
+type Payloads []Payload
 
-func (p PayloadWrapper) Index(idx int) SinglePayloadWrapper {
-	if idx+1 > len(p.payloads) {
-		return SinglePayloadWrapper{}
+func (p Payloads) Index(idx int) Payload {
+	if idx+1 > len(p) {
+		return Payload{}
 	}
 
-	return SinglePayloadWrapper{Payload: p.payloads[idx]}
+	return p[idx]
 }
 
 // including start, excluding end
-func (p PayloadWrapper) Range(start int, end int) PayloadWrapper {
-	if end >= len(p.payloads) {
-		return PayloadWrapper{}
+func (p Payloads) Range(start int, end int) Payloads {
+	if end >= len(p) {
+		return Payloads{}
 
 	}
-	return PayloadWrapper{payloads: []Payload{p.payloads[start:end]}}
+	return p[start:end]
 }
 
-func (p PayloadWrapper) First() SinglePayloadWrapper {
+func (p Payloads) First() Payload {
 	return p.Index(0)
 }
 
-func (p PayloadWrapper) Second() SinglePayloadWrapper {
+func (p Payloads) Second() Payload {
 	return p.Index(1)
 }
 
-func (p PayloadWrapper) Last() SinglePayloadWrapper {
-	return p.Index(len(p.payloads) - 1)
+func (p Payloads) Last() Payload {
+	return p.Index(len(p) - 1)
 }
 
-func (p PayloadWrapper) Iterate(visitor func(int, SinglePayloadWrapper)) {
-	for i := range p.payloads {
+func (p Payloads) Iterate(visitor func(int, Payload)) {
+	for i := range p {
 		visitor(i, p.Index(i))
 	}
 }
