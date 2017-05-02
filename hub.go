@@ -5,18 +5,38 @@ import (
 	"sync"
 )
 
-type Hooks map[string][]*Hook
+type Hooks []*Hook
+type HooksMap map[string]Hooks
+
+type Registry interface {
+	RegisterHook(name string, callback interface{}) *Hook
+}
+
+type Notifier interface {
+	Notify(name string, payloads ...interface{})
+}
+
+type pendingEntry struct {
+	name     string
+	payloads []interface{}
+}
 
 type Hub struct {
-	logger Logger
-	mu     sync.RWMutex // locks the hooks
-	hooks  Hooks
+	logger           Logger
+	mu               sync.RWMutex // locks the hooks
+	hooks            HooksMap
+	pendingNotifiers []pendingEntry // slice of names(hooks' name)
 }
+
+var (
+	_ Registry = &Hub{}
+	_ Notifier = &Hub{}
+)
 
 func NewHub() *Hub {
 	return &Hub{
 		logger: DefaultLogger(),
-		hooks:  make(Hooks, 0),
+		hooks:  make(HooksMap, 0),
 	}
 }
 
@@ -27,6 +47,7 @@ func (h *Hub) AttachLogger(logger Logger) {
 func (h *Hub) RegisterHook(name string, callback interface{}) *Hook {
 	hook := NewHook(name, callback)
 	h.registerHook(hook)
+	h.callPendingNotifiers(name)
 	return hook
 }
 
@@ -37,34 +58,60 @@ func (h *Hub) registerHook(hook *Hook) {
 }
 
 func (h *Hub) Notify(name string, payloads ...interface{}) {
-	callback := h.getHookCallbackFrom(name, payloads...)
-	callback()
+	if hooks, has := h.GetHooks(name); has {
+		h.callHooks(hooks, name, payloads...)
+		return
+	}
+	h.addPendingNotifier(name, payloads)
 }
 
-func (h *Hub) getHookCallbackFrom(name string, arguments ...interface{}) func() {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	// choose to return a function which is de-coupled from the map
-	// fast as possible them in order to return the release the lock as fast as possible.
-
-	for hookName, hooks := range h.hooks {
-		if hookName != name {
-			continue
-		}
-
-		return func() {
-			for _, hook := range hooks {
-				if hook.Async {
-					go h.callHook(hook, arguments...)
-				} else {
-					h.callHook(hook, arguments...)
-				}
-
-			}
+func (h *Hub) hasPendingNotifier(name string) bool {
+	for _, entry := range h.pendingNotifiers {
+		if entry.name == name {
+			return true
 		}
 	}
+	return false
+}
 
-	return func() {}
+func (h *Hub) addPendingNotifier(name string, payloads []interface{}) {
+	if !h.hasPendingNotifier(name) {
+		entry := pendingEntry{
+			name:     name,
+			payloads: payloads,
+		}
+		h.pendingNotifiers = append(h.pendingNotifiers, entry)
+	}
+}
+
+func (h *Hub) callPendingNotifiers(registeredHookName string) {
+	entries := h.pendingNotifiers
+	for i, entry := range entries {
+		if entry.name == registeredHookName {
+			// remove that entry when found (we don't care about the order)
+			entries[i] = entries[len(entries)-1]
+			h.pendingNotifiers = entries[:len(entries)-1]
+			// finally, do the Notify now.
+			h.Notify(entry.name, entry.payloads...)
+		}
+	}
+}
+
+func (h *Hub) GetHooks(name string) (Hooks, bool) {
+	h.mu.RLock()
+	hooks, has := h.hooks[name]
+	h.mu.RUnlock()
+	return hooks, has
+}
+
+func (h *Hub) callHooks(hooks Hooks, name string, arguments ...interface{}) {
+	for _, hook := range hooks {
+		if hook.Async {
+			go h.callHook(hook, arguments...)
+		} else {
+			h.callHook(hook, arguments...)
+		}
+	}
 }
 
 func (h *Hub) callHook(hook *Hook, arguments ...interface{}) {

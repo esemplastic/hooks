@@ -1,5 +1,17 @@
 # Hooks
 
+This project is not ready yet.
+
+Why?
+
+- Code is not commented at all.
+- Documentation is missing.
+- Export of functions that is not part of the public API.
+- Readme is just a blank paper of work.
+- Travis Integration is missing.
+- The [Idea](#idea) --features is not yet implemented. 
+ 
+
 ## Idea 
 
 - [x] The RegisterHook would be able to catch any parameters
@@ -43,7 +55,9 @@
 
 	Also:
 	Be able to .Wait for specific callbacks or a group of them or globally.
- 
+
+- [x] The Notify should be able to be registered, as well, before RegisterHook in order to be able to be used
+	when init functions are being used or when the order does not matters -- pending notifiers, remove them when RegisterHook registers the correct.
 
 ## License
 
