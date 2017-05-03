@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -49,7 +50,7 @@ func (h *Hub) RegisterHookFunc(hookFunc interface{}, callback interface{}) *Hook
 }
 
 func (h *Hub) RegisterHook(name string, callback interface{}) *Hook {
-	hook := NewHook(name, callback)
+	hook := newHook(h, name, callback)
 	h.registerHook(hook)
 	h.callPendingNotifiers(name)
 	return hook
@@ -116,5 +117,26 @@ func (h *Hub) callHook(hook *Hook, arguments ...interface{}) {
 	if err != nil {
 		h.logger(fmt.Sprintf("error: %s\n callback metadata:\n  name: %s\n  file: %s\n  line: %d\n notification: '%s'",
 			err.Error(), hook.Source.Name, hook.Source.File, hook.Source.Line, hook.Name))
+	}
+}
+
+// // this event will be notified to all Hooks, because the name of the func will be the same,
+// // that is that we want here.
+//
+// forget it, it produces an overflow of stack if the user do an accident...
+// func (h *Hub) RegisterHookChanged(changedFunction interface{}, callback func(hookChanged *Hook)) {
+// 	h.RegisterHookFunc(changedFunction, callback)
+// }
+
+func (h *Hub) sortHooks(name string) {
+	// per-group of hook maps, select and re-sort only these
+	// that are inside the same hook map
+	if hooks, has := h.GetHooks(name); has {
+		h.mu.Lock()
+		// sorts by the higher number of priority level
+		sort.Slice(hooks, func(i, j int) bool {
+			return hooks[i].Priority >= hooks[j].Priority
+		})
+		h.mu.Unlock()
 	}
 }

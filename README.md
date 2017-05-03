@@ -81,6 +81,16 @@ Why?
 	 I made it to be able to 'wait' for the correct .RegisterHook in order to notify the hooks. So we don't have any issue
 	 with that. The lib should be able to work both ways, as explained before (as an event listener and as a down-up notifier for func execution).
 
+- [x] Prioritize per hook map's entry. Hooks are grouped to a Name (hook.Name and HooksMap's key, hook.Name is there to provide debug messages when needed).
+
+	- The type should be an integer, but with some default Priority "levels".
+	- Highest executes first.
+	- No limits to the number that developer can use, by-default we will have 5-6 levels with iota * 100 starting from Idle (the lowest Priority).
+	- Should be able to a hook to be prioritized from another hook, at runtime on build time, at any time it wants.
+	- Should be able to accept negative values in order to reduce the priority when needed.
+	- The hub will sort the routes per hook's changed priority .Name, so only hooks that are "linked" will be sorted.
+	- The hook should call the hub's sort, so we should add an 'Owner *Hub' field.
+
 ## License
 
 Unless otherwise noted, the source files are distributed
