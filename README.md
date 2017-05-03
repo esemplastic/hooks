@@ -59,7 +59,7 @@ Why?
 - [x] The Notify should be able to be registered, as well, before RegisterHook in order to be able to be used
 	when init functions are being used or when the order does not matters -- pending notifiers, remove them when RegisterHook registers the correct.
 
-- [ ] Be able to catch raw function execution without removing the dynamic behavior too. 
+- [x] Be able to catch raw function execution without removing the dynamic behavior too. 
 
 	Explanation: In order to keep the statical typing feature of the language, 
 	I must think a way to add notifiers and hooks with a custom function form. 

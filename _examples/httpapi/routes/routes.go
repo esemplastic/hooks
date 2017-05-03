@@ -1,8 +1,9 @@
 package routes
 
-import "github.com/esemplastic/hooks/_examples/httpapi/hub"
+import "github.com/esemplastic/hooks/_examples/httpapi/hooks"
 
+// important step 2 of 2:
 func init() {
-	hub.AddRoute("GET", "/", indexHandler)
-	hub.AddRoute("GET", "/about", aboutHandler)
+	hooks.AddRoute("GET", "/", indexHandler)
+	hooks.AddRoute("GET", "/about", aboutHandler)
 }

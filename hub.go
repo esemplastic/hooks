@@ -44,6 +44,10 @@ func (h *Hub) AttachLogger(logger Logger) {
 	h.logger = logger
 }
 
+func (h *Hub) RegisterHookFunc(hookFunc interface{}, callback interface{}) *Hook {
+	return h.RegisterHook(nameOfFunc(hookFunc), callback)
+}
+
 func (h *Hub) RegisterHook(name string, callback interface{}) *Hook {
 	hook := NewHook(name, callback)
 	h.registerHook(hook)
@@ -55,6 +59,10 @@ func (h *Hub) registerHook(hook *Hook) {
 	h.mu.Lock()
 	h.hooks[hook.Name] = append(h.hooks[hook.Name], hook)
 	h.mu.Unlock()
+}
+
+func (h *Hub) NotifyFunc(hookFunc interface{}, payloads ...interface{}) {
+	h.Notify(nameOfFunc(hookFunc), payloads...)
 }
 
 func (h *Hub) Notify(name string, payloads ...interface{}) {

@@ -3,6 +3,7 @@ package hooks
 import (
 	"fmt"
 	"reflect"
+	"runtime"
 )
 
 func isFunc(typ reflect.Type) bool {
@@ -83,4 +84,8 @@ func execFunc(val reflect.Value, arguments ...interface{}) ([]reflect.Value, err
 
 	// execute the function, no need for .CallSlice, it's working  well with .Call on variadics too.
 	return val.Call(in), nil
+}
+
+func nameOfFunc(fn interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 }

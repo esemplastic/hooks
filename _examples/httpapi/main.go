@@ -4,12 +4,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/esemplastic/hooks/_examples/httpapi/hub"
+	"github.com/esemplastic/hooks/_examples/httpapi/hooks"
 	_ "github.com/esemplastic/hooks/_examples/httpapi/routes"
 )
 
 func init() {
-	hub.RegisterHook(hub.AddRoute, addRoute)
+	// important step 1 of 2:
+	hooks.Register(hooks.AddRoute, addRoute)
 }
 
 func main() {
