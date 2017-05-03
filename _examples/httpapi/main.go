@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	hub.Registry.RegisterHook(hub.AddRoute_Hook, addRoute)
+	hub.RegisterHook(hub.AddRoute, addRoute)
 }
 
 func main() {
@@ -38,6 +38,7 @@ func wrapHandler(method string, path string, handler http.HandlerFunc) http.Hand
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
+
 		handler(w, r)
 	}
 }

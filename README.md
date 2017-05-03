@@ -59,6 +59,28 @@ Why?
 - [x] The Notify should be able to be registered, as well, before RegisterHook in order to be able to be used
 	when init functions are being used or when the order does not matters -- pending notifiers, remove them when RegisterHook registers the correct.
 
+- [ ] Be able to catch raw function execution without removing the dynamic behavior too. 
+
+	Explanation: In order to keep the statical typing feature of the language, 
+	I must think a way to add notifiers and hooks with a custom function form. 
+
+	The same function form which should be able to be splitted into: 
+	1. name and callback for the notifier
+	2. name and payloads for the registrar
+
+	For example:
+	- /myhub contains the form which in the same time calls the (new) NotifyFunc which
+		should gets the func and converts that to a name and calls the dynamic .Notify: 
+	- (myhub) func Add(item){ hub.NotifyFunc(Add, item) }
+	- (notifier) myhub.Add(item)
+	- (registrar) hub.RegisterFunc(myhub.Add, func(item){})
+	 
+	 We keep the de-coupling. The registrar doesn't knows the notifier and notifier doesn't knows about registrar at all.
+	 The registrar can import the notifier with empty statement (_ importPath), inside that init the notifier will use
+	 the myhub's notifier. Remember: The notifier executes first, which is anorthodox BUT at the previous commit
+	 I made it to be able to 'wait' for the correct .RegisterHook in order to notify the hooks. So we don't have any issue
+	 with that. The lib should be able to work both ways, as explained before (as an event listener and as a down-up notifier for func execution).
+
 ## License
 
 Unless otherwise noted, the source files are distributed

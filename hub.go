@@ -65,23 +65,12 @@ func (h *Hub) Notify(name string, payloads ...interface{}) {
 	h.addPendingNotifier(name, payloads)
 }
 
-func (h *Hub) hasPendingNotifier(name string) bool {
-	for _, entry := range h.pendingNotifiers {
-		if entry.name == name {
-			return true
-		}
-	}
-	return false
-}
-
 func (h *Hub) addPendingNotifier(name string, payloads []interface{}) {
-	if !h.hasPendingNotifier(name) {
-		entry := pendingEntry{
-			name:     name,
-			payloads: payloads,
-		}
-		h.pendingNotifiers = append(h.pendingNotifiers, entry)
+	entry := pendingEntry{
+		name:     name,
+		payloads: payloads,
 	}
+	h.pendingNotifiers = append(h.pendingNotifiers, entry)
 }
 
 func (h *Hub) callPendingNotifiers(registeredHookName string) {

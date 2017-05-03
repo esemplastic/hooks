@@ -1,14 +1,6 @@
 package routes
 
-import (
-	"net/http"
-
-	"github.com/esemplastic/hooks/_examples/httpapi/hub"
-)
-
-func init() {
-	hub.Notifier.Notify(hub.AddRoute_Hook, "GET", "/", indexHandler)
-}
+import "net/http"
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	contents := []byte("Hello from index!")
