@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
 	"sync"
 )
@@ -72,6 +73,16 @@ func (h *Hub) Notify(name string, payloads ...interface{}) {
 		return
 	}
 	h.addPendingNotifier(name, payloads)
+}
+
+// GetCurrentNotifier returns the caller who calls the current notifier, it can be called inside a hook's callback.
+func (h *Hub) GetCurrentNotifier() Source {
+	pc, _, _, ok := runtime.Caller(11)
+	if !ok {
+		return Source{}
+	}
+	caller := ReadSource(pc)
+	return caller
 }
 
 func (h *Hub) addPendingNotifier(name string, payloads []interface{}) {

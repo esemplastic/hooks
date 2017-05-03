@@ -52,15 +52,7 @@ func ExampleHookSetAsync() {
 
 	hub.Notify("myhook")
 
-	// wait for myhook to finish, it's too long, temporary we don't have a way to wait, it's todo.
 	time.Sleep(2 * time.Second)
-
-	// At the future we should develop it in order to be able to set
-	// the hook2 in Async state in order to be executed with other 'async'
-	// hooks inside different goroutines, or inside a group of goroutines, we will see.
-
-	// Also:
-	// Be able to .Wait for specific callbacks or a group of them or globally.
 
 	// Output:
 	// first
@@ -104,21 +96,21 @@ func ExamplePrioritizeAboveOf() {
 
 	hub.RegisterHook("myhook", func() {
 		fmt.Println("third")
-	}).SetPriority(Normal)
+	}).SetPriority(High)
 
 	hub.RegisterHook("myhook", func() {
 		fmt.Println("forth")
-	}).SetPriority(BelowNormal)
+	}).SetPriority(Normal)
 
 	firstHook := hub.RegisterHook("myhook", func() {
 		fmt.Println("first")
-	}).SetPriority(High) // or anything
+	}).SetPriority(Realtime) // or anything
 
 	secondHook := hub.RegisterHook("myhook", func() {
 		fmt.Println("second")
-	}).SetPriority(High)
+	}).SetPriority(Realtime)
 
-	// even if High, it can be priortized, remember we work with integers, Priority is just a type of int.
+	// even if Realtime, it can be priortized, remember we work with integers, Priority is just a type of int.
 	firstHook.PrioritizeAboveOf(secondHook)
 
 	hub.Notify("myhook")
@@ -129,4 +121,35 @@ func ExamplePrioritizeAboveOf() {
 	// third
 	// forth
 	// last
+}
+
+var messaging = NewHub()
+
+func say(message string) {
+	messaging.NotifyFunc(say, message)
+}
+
+func ExampleHookSource() {
+	messaging.RegisterHookFunc(say, func(message string) {
+		fmt.Printf("%s from %s via func %s\n", message, messaging.GetCurrentNotifier().Name, ReadSourceFunc(say).Name)
+	})
+
+	var messages = []string{
+		"hello",
+		"hi",
+		"yo",
+		"hola",
+		"hey",
+	}
+
+	for _, s := range messages {
+		say(s)
+	}
+
+	// Output:
+	// hello from github.com/esemplastic/hooks.ExampleHookSource via func github.com/esemplastic/hooks.say
+	// hi from github.com/esemplastic/hooks.ExampleHookSource via func github.com/esemplastic/hooks.say
+	// yo from github.com/esemplastic/hooks.ExampleHookSource via func github.com/esemplastic/hooks.say
+	// hola from github.com/esemplastic/hooks.ExampleHookSource via func github.com/esemplastic/hooks.say
+	// hey from github.com/esemplastic/hooks.ExampleHookSource via func github.com/esemplastic/hooks.say
 }
