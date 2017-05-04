@@ -131,7 +131,7 @@ func say(message string) {
 
 func ExampleHookSource() {
 	messaging.RegisterHookFunc(say, func(message string) {
-		fmt.Printf("%s from %s via func %s\n", message, messaging.GetCurrentNotifier().Name, ReadSourceFunc(say).Name)
+		fmt.Printf("%s from %s via func %s\n", message, GetCurrentNotifier().Name, ReadSourceFunc(say).Name)
 	})
 
 	var messages = []string{

@@ -95,3 +95,56 @@ func TestPendingNotifiers(t *testing.T) {
 		t.Fatalf("expected pending notifiers len to be %d but got %d", expected, got)
 	}
 }
+
+var (
+	removeHookHub = NewHub()
+)
+
+func myHook(message string) {
+	removeHookHub.NotifyFunc(myHook, message)
+}
+
+func TestRemoveHook(t *testing.T) {
+	t.Parallel()
+
+	var (
+		// we 're testing the notify and register again before the remove hook.
+		expectedMessage = "hello"
+	)
+
+	var callback = func(message string) {
+		if message != expectedMessage {
+			t.Fatalf("expected incoming message to be: '%s' but got: '%s' ", expectedMessage, message)
+		}
+	}
+
+	removeHookHub.RegisterHookFunc(myHook, callback)
+	myHook(expectedMessage)
+
+	hooks, _ := removeHookHub.GetHooksFunc(myHook)
+	if expected, got := 1, len(hooks); expected != got {
+		t.Fatalf("expected hooks len to be %d but got %d", expected, got)
+	}
+
+	// remove and test the len again.
+
+	removed := removeHookHub.RemoveHookFunc(myHook, callback)
+	if removed {
+		hooks, _ := removeHookHub.GetHooksFunc(myHook)
+		if expected, got := 0, len(hooks); expected != got {
+			t.Fatalf("removed is true but expected hooks len to be %d but got %d", expected, got)
+		}
+	} else {
+		t.Fatalf("remove action failed")
+	}
+
+	// try to remove the already removed, it should be give us false isntead.
+	removed = removeHookHub.RemoveHookFunc(myHook, callback)
+	if removed {
+		t.Fatalf("remove action should be failed because we already remove that hook!")
+	}
+}
+
+func TestRemoveHooks(t *testing.T) {
+	///TODO: or add it inside TestRemoveHook
+}

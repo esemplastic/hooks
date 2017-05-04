@@ -86,6 +86,20 @@ func execFunc(val reflect.Value, arguments ...interface{}) ([]reflect.Value, err
 	return val.Call(in), nil
 }
 
-func nameOfFunc(fn interface{}) string {
+// NameOfFunc returns the name of a function, developers can use that
+// to get the name of a hook function, i.e:
+// instead of RegisterHookFunc(myFunc), user can use RegisterHook(NameOfFunc(myFunc),...)
+// and so on.
+func NameOfFunc(fn interface{}) string {
 	return runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+}
+
+// GetCurrentNotifier returns the caller who calls the current notifier, it can be only called inside a hook's callback.
+func GetCurrentNotifier() Source {
+	pc, _, _, ok := runtime.Caller(11)
+	if !ok {
+		return Source{}
+	}
+	caller := ReadSource(pc)
+	return caller
 }

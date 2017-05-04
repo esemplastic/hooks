@@ -91,6 +91,9 @@ Why?
 	- The hub will sort the routes per hook's changed priority .Name, so only hooks that are "linked" will be sorted.
 	- The hook should call the hub's sort, so we should add an 'Owner *Hub' field.
 
+- [x] Able to remove hook based on a hook name and its unique callback.
+- [x] Able to remove all hooks based on a name.
+
 ## License
 
 Unless otherwise noted, the source files are distributed
