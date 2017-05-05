@@ -1,7 +1,6 @@
 package hooks
 
 import (
-	"fmt"
 	"reflect"
 	"sort"
 	"sync"
@@ -120,7 +119,12 @@ func (h *Hub) RunFunc(hookFunc interface{}, payloads ...interface{}) {
 
 func (h *Hub) Run(name string, payloads ...interface{}) {
 	if hooks, has := h.GetHooks(name); has {
-		h.callHooks(hooks, name, payloads...)
+		for _, hook := range hooks {
+			_, err := hook.Run(payloads...)
+			if err != nil {
+				h.logger(err.Error())
+			}
+		}
 		return
 	}
 	h.addPendingRunner(name, payloads)
@@ -156,24 +160,6 @@ func (h *Hub) GetHooks(name string) (Hooks, bool) {
 	hooks, has := h.hooks[name]
 	h.mu.RUnlock()
 	return hooks, has
-}
-
-func (h *Hub) callHooks(hooks Hooks, name string, arguments ...interface{}) {
-	for _, hook := range hooks {
-		if hook.Async {
-			go h.callHook(hook, arguments...)
-		} else {
-			h.callHook(hook, arguments...)
-		}
-	}
-}
-
-func (h *Hub) callHook(hook *Hook, arguments ...interface{}) {
-	_, err := execFunc(hook.Callback, arguments...)
-	if err != nil {
-		h.logger(fmt.Sprintf("error: %s\n callback metadata:\n  name: %s\n  file: %s\n  line: %d\n notification: '%s'",
-			err.Error(), hook.Source.Name, hook.Source.File, hook.Source.Line, hook.Name))
-	}
 }
 
 // // this event will be notified to all Hooks, because the name of the func will be the same,

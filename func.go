@@ -94,7 +94,7 @@ func NameOfFunc(fn interface{}) string {
 	return runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 }
 
-// GetCurrentRunner returns the caller who calls the current runner, it can be only called inside a hook's callback.
+// GetCurrentRunner returns the caller who calls the current listener, it can be only called inside a hook's callback.
 func GetCurrentRunner() Source {
 	pc, _, _, ok := runtime.Caller(11)
 	if !ok {
@@ -102,4 +102,17 @@ func GetCurrentRunner() Source {
 	}
 	caller := ReadSource(pc)
 	return caller
+}
+
+// GetCurrentHookSource returns the current hook's source who calls the current listener, it can be only called inside a hook's callback.
+func GetCurrentHookSource() Source {
+	return func() Source { // we don't have other possibilities as I know...
+		pc, _, _, ok := runtime.Caller(11)
+		if !ok {
+			return Source{}
+		}
+		caller := ReadSource(pc)
+		return caller
+	}()
+
 }

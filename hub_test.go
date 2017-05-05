@@ -148,26 +148,3 @@ func TestHubRemove(t *testing.T) {
 func TestHubRemoveHooks(t *testing.T) {
 	///TODO: or add it inside TestRemoveHook
 }
-
-var messaging = NewHub()
-
-func n() {
-	messaging.RunFunc(n)
-}
-
-func TestGetCurrentRunner(t *testing.T) {
-	messaging.RegisterFunc(n, func() {
-		cRunner := GetCurrentRunner().Name
-		fnName := ReadSourceFunc(n).Name
-
-		if expected, got := "github.com/esemplastic/hooks.TestGetCurrentRunner", cRunner; expected != got {
-			t.Fatalf("expected current runner's name source to be: '%s' but got: '%s'", expected, got)
-		}
-
-		if expected, got := "github.com/esemplastic/hooks.n", fnName; expected != got {
-			t.Fatalf("expected hook's source to be: '%s' but got: '%s'", expected, got)
-		}
-	})
-
-	n()
-}
