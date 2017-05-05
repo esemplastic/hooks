@@ -94,8 +94,8 @@ func NameOfFunc(fn interface{}) string {
 	return runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 }
 
-// GetCurrentNotifier returns the caller who calls the current notifier, it can be only called inside a hook's callback.
-func GetCurrentNotifier() Source {
+// GetCurrentRunner returns the caller who calls the current runner, it can be only called inside a hook's callback.
+func GetCurrentRunner() Source {
 	pc, _, _, ok := runtime.Caller(11)
 	if !ok {
 		return Source{}

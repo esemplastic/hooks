@@ -11,11 +11,11 @@ type Hooks []*Hook
 type HooksMap map[string]Hooks
 
 type Registry interface {
-	RegisterHook(name string, callback interface{}) *Hook
+	Register(name string, callback interface{}) *Hook
 }
 
 type Notifier interface {
-	Notify(name string, payloads ...interface{})
+	Run(name string, payloads ...interface{})
 }
 
 type pendingEntry struct {
@@ -24,10 +24,10 @@ type pendingEntry struct {
 }
 
 type Hub struct {
-	logger           Logger
-	mu               sync.RWMutex // locks the hooks
-	hooks            HooksMap
-	pendingNotifiers []pendingEntry // slice of names(hooks' name)
+	logger         Logger
+	mu             sync.RWMutex // locks for the hooks
+	hooks          HooksMap
+	pendingRunners []pendingEntry // if .Run before .Register, then the caller goes there and runs whenever it can.
 }
 
 var (
@@ -46,11 +46,11 @@ func (h *Hub) AttachLogger(logger Logger) {
 	h.logger = logger
 }
 
-func (h *Hub) RegisterHookFunc(hookFunc interface{}, callback interface{}) *Hook {
-	return h.RegisterHook(NameOfFunc(hookFunc), callback)
+func (h *Hub) RegisterFunc(hookFunc interface{}, callback interface{}) *Hook {
+	return h.Register(NameOfFunc(hookFunc), callback)
 }
 
-func (h *Hub) RegisterHook(name string, callback interface{}) *Hook {
+func (h *Hub) Register(name string, callback interface{}) *Hook {
 	hook := newHook(h, name, callback)
 	h.registerHook(hook)
 	h.callPendingNotifiers(name)
@@ -80,19 +80,19 @@ func (h *Hub) removeHooks(name string) (ok bool) {
 	return
 }
 
-// RemoveHook removes a hook based on a function name and its callback.
+// Remove removes a hook based on a function name and its callback.
 //
-// Same as RemoveHook(NameOfFunc(fn), callback).
+// Same as Remove(NameOfFunc(fn), callback).
 //
 // Returns true if the removal succeed.
-func (h *Hub) RemoveHookFunc(fn interface{}, callback interface{}) bool {
-	return h.RemoveHook(NameOfFunc(fn), callback)
+func (h *Hub) RemoveFunc(fn interface{}, callback interface{}) bool {
+	return h.Remove(NameOfFunc(fn), callback)
 }
 
-// RemoveHook removes a hook based on a hook name and its callback.
+// Remove removes a hook based on a hook name and its callback.
 //
 // Returns true if the removal succeed.
-func (h *Hub) RemoveHook(name string, callback interface{}) bool {
+func (h *Hub) Remove(name string, callback interface{}) bool {
 	return h.removeHook(name, callback)
 }
 
@@ -114,35 +114,35 @@ func (h *Hub) removeHook(name string, callback interface{}) bool {
 	return false
 }
 
-func (h *Hub) NotifyFunc(hookFunc interface{}, payloads ...interface{}) {
-	h.Notify(NameOfFunc(hookFunc), payloads...)
+func (h *Hub) RunFunc(hookFunc interface{}, payloads ...interface{}) {
+	h.Run(NameOfFunc(hookFunc), payloads...)
 }
 
-func (h *Hub) Notify(name string, payloads ...interface{}) {
+func (h *Hub) Run(name string, payloads ...interface{}) {
 	if hooks, has := h.GetHooks(name); has {
 		h.callHooks(hooks, name, payloads...)
 		return
 	}
-	h.addPendingNotifier(name, payloads)
+	h.addPendingRunner(name, payloads)
 }
 
-func (h *Hub) addPendingNotifier(name string, payloads []interface{}) {
+func (h *Hub) addPendingRunner(name string, payloads []interface{}) {
 	entry := pendingEntry{
 		name:     name,
 		payloads: payloads,
 	}
-	h.pendingNotifiers = append(h.pendingNotifiers, entry)
+	h.pendingRunners = append(h.pendingRunners, entry)
 }
 
 func (h *Hub) callPendingNotifiers(registeredHookName string) {
-	entries := h.pendingNotifiers
+	entries := h.pendingRunners
 	for i, entry := range entries {
 		if entry.name == registeredHookName {
 			// remove that entry when found (we don't care about the order)
 			entries[i] = entries[len(entries)-1]
-			h.pendingNotifiers = entries[:len(entries)-1]
-			// finally, do the Notify now.
-			h.Notify(entry.name, entry.payloads...)
+			h.pendingRunners = entries[:len(entries)-1]
+			// finally, do the Run now.
+			h.Run(entry.name, entry.payloads...)
 		}
 	}
 }
@@ -181,7 +181,7 @@ func (h *Hub) callHook(hook *Hook, arguments ...interface{}) {
 //
 // forget it, it produces an overflow of stack if the user do an accident...
 // func (h *Hub) RegisterHookChanged(changedFunction interface{}, callback func(hookChanged *Hook)) {
-// 	h.RegisterHookFunc(changedFunction, callback)
+// 	h.RegisterFunc(changedFunction, callback)
 // }
 
 func (h *Hub) sortHooks(name string) {

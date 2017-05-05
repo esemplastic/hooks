@@ -9,13 +9,13 @@ var (
 	hub = NewHub()
 )
 
-func TestRegisterHook(t *testing.T) {
+func TestHubRegister(t *testing.T) {
 	var (
 		state1          = "state1"
 		expectedPayload = errors.New("Error from state1")
 	)
 
-	hub.RegisterHook(state1, func(err error) {
+	hub.Register(state1, func(err error) {
 		if expected, got := expectedPayload.Error(), err.Error(); expected != got {
 			t.Fatalf("expected error message: '%s' but got: '%s'", expected, got)
 		}
@@ -25,23 +25,23 @@ func TestRegisterHook(t *testing.T) {
 		t.Fatalf("expected hooks len to be %d but got %d", expected, got)
 	}
 
-	hub.Notify(state1, expectedPayload)
+	hub.Run(state1, expectedPayload)
 }
 
-func TestNotify(t *testing.T) {
+func TestHubRun(t *testing.T) {
 	var (
 		state2           = "state2"
 		state3           = "state3"
 		expectedPayloads = []string{"payload1", "payload2", "payload3", "payload4"}
 	)
 
-	hub.RegisterHook(state2, func(payloads []string) {
+	hub.Register(state2, func(payloads []string) {
 		if expected, got := len(expectedPayloads), len(payloads); expected != got {
 			t.Fatalf("expected payloads are different by the received, expected: %d but got: %d", expected, got)
 		}
 	})
 
-	hub.RegisterHook(state3, func(payloads ...string) {
+	hub.Register(state3, func(payloads ...string) {
 		// println("--> " + payloads[0)
 		if expected, got := len(expectedPayloads), len(payloads); expected != got {
 			t.Fatalf("expected payloads length to be %d but got: %d", expected, got)
@@ -57,12 +57,12 @@ func TestNotify(t *testing.T) {
 		}
 	})
 
-	hub.Notify(state2, expectedPayloads)
-	hub.Notify(state3, "payload1", "payload2", "payload3", "payload4")
+	hub.Run(state2, expectedPayloads)
+	hub.Run(state3, "payload1", "payload2", "payload3", "payload4")
 }
 
-func TestPendingNotifiers(t *testing.T) {
-	// first RegisterHook and after declare the Notify,
+func TestHubPendingRunners(t *testing.T) {
+	// first Register and after declare the Run,
 	// it should be succeed.
 	var (
 		state           = "hi"
@@ -70,28 +70,28 @@ func TestPendingNotifiers(t *testing.T) {
 		hub             = NewHub()
 	)
 
-	// notify first, the .Notify
+	// notify first, the .Run
 	// will check if a registered hook is exists
 	// if not it will add it as a "pending notifier"
 	// and will try to execute that notifier
-	// against each of the .RegisterHook's name argument.
+	// against each of the .Register's name argument.
 	// If found then it should remove the pending.
-	hub.Notify(state, expectedPayload)
+	hub.Run(state, expectedPayload)
 
 	// it should be added because we don't have a registered hook with that name, yet.
-	if expected, got := 1, len(hub.pendingNotifiers); expected != got {
+	if expected, got := 1, len(hub.pendingRunners); expected != got {
 		t.Fatalf("expected pending notifiers len to be %d but got %d", expected, got)
 	}
 
 	// register the notify now, it should be call the pending notifier.
-	hub.RegisterHook(state, func(username string) {
+	hub.Register(state, func(username string) {
 		if username != expectedPayload {
 			t.Fatalf("expected payload to be '%s' but got '%s'", expectedPayload, username)
 		}
 	})
 
 	// it should be removed now.
-	if expected, got := 0, len(hub.pendingNotifiers); expected != got {
+	if expected, got := 0, len(hub.pendingRunners); expected != got {
 		t.Fatalf("expected pending notifiers len to be %d but got %d", expected, got)
 	}
 }
@@ -101,10 +101,10 @@ var (
 )
 
 func myHook(message string) {
-	removeHookHub.NotifyFunc(myHook, message)
+	removeHookHub.RunFunc(myHook, message)
 }
 
-func TestRemoveHook(t *testing.T) {
+func TestHubRemove(t *testing.T) {
 	t.Parallel()
 
 	var (
@@ -118,7 +118,7 @@ func TestRemoveHook(t *testing.T) {
 		}
 	}
 
-	removeHookHub.RegisterHookFunc(myHook, callback)
+	removeHookHub.RegisterFunc(myHook, callback)
 	myHook(expectedMessage)
 
 	hooks, _ := removeHookHub.GetHooksFunc(myHook)
@@ -128,7 +128,7 @@ func TestRemoveHook(t *testing.T) {
 
 	// remove and test the len again.
 
-	removed := removeHookHub.RemoveHookFunc(myHook, callback)
+	removed := removeHookHub.RemoveFunc(myHook, callback)
 	if removed {
 		hooks, _ := removeHookHub.GetHooksFunc(myHook)
 		if expected, got := 0, len(hooks); expected != got {
@@ -139,12 +139,35 @@ func TestRemoveHook(t *testing.T) {
 	}
 
 	// try to remove the already removed, it should be give us false isntead.
-	removed = removeHookHub.RemoveHookFunc(myHook, callback)
+	removed = removeHookHub.RemoveFunc(myHook, callback)
 	if removed {
 		t.Fatalf("remove action should be failed because we already remove that hook!")
 	}
 }
 
-func TestRemoveHooks(t *testing.T) {
+func TestHubRemoveHooks(t *testing.T) {
 	///TODO: or add it inside TestRemoveHook
+}
+
+var messaging = NewHub()
+
+func n() {
+	messaging.RunFunc(n)
+}
+
+func TestGetCurrentRunner(t *testing.T) {
+	messaging.RegisterFunc(n, func() {
+		cRunner := GetCurrentRunner().Name
+		fnName := ReadSourceFunc(n).Name
+
+		if expected, got := "github.com/esemplastic/hooks.TestGetCurrentRunner", cRunner; expected != got {
+			t.Fatalf("expected current runner's name source to be: '%s' but got: '%s'", expected, got)
+		}
+
+		if expected, got := "github.com/esemplastic/hooks.n", fnName; expected != got {
+			t.Fatalf("expected hook's source to be: '%s' but got: '%s'", expected, got)
+		}
+	})
+
+	n()
 }
